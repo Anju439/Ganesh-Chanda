@@ -12,12 +12,14 @@ import {
   YAxis,
 } from 'recharts'
 import { api } from '../api'
+import { useAuth } from '../auth'
 import { formatDate, formatRupees } from '../format'
 import type { Dashboard } from '../types'
 
 const CHART_COLORS = ['#6b1d12', '#e07a2f', '#e8a317', '#8d4a2b', '#3f6b4a']
 
 export default function DashboardPage() {
+  const { staff } = useAuth()
   const [data, setData] = useState<Dashboard | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -73,6 +75,14 @@ export default function DashboardPage() {
           >
             Record a donation
           </Link>
+          {staff?.isMainAdmin && (
+            <Link
+              to="/inbox"
+              className="rounded-full bg-[#fff8ea] px-4 py-2 text-sm font-semibold text-[#6b1d12] no-underline"
+            >
+              Open Admin inbox
+            </Link>
+          )}
         </div>
       </section>
 

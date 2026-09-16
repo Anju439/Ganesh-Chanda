@@ -14,7 +14,7 @@ export default function Layout() {
   const [open, setOpen] = useState(false)
   const { staff, logout } = useAuth()
   const navLinks = staff?.isMainAdmin
-    ? [...links, { to: '/inbox', label: 'Main inbox' }]
+    ? [...links, { to: '/inbox', label: 'Admin inbox' }]
     : links
 
   return (

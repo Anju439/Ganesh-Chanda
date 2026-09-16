@@ -34,7 +34,7 @@ export default function AlertsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-3xl text-[#6b1d12]">Main Admin inbox</h1>
+        <h1 className="font-display text-3xl text-[#6b1d12]">Admin inbox</h1>
         <p className="text-[#7a5a4a]">
           Face photos and donor or donation entries from Admin 1–5 are delivered here. They are not
           sent to the other admin accounts.
