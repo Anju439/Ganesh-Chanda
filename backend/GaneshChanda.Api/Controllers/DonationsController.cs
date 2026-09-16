@@ -1,11 +1,13 @@
 using GaneshChanda.Api.Data;
 using GaneshChanda.Api.DTOs;
 using GaneshChanda.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace GaneshChanda.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class DonationsController : ControllerBase

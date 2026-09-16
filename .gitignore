@@ -13,6 +13,6 @@ frontend/dist/
 .env.local
 *.log
 
-## OS
-.DS_Store
-Thumbs.db
+## Face login captures
+backend/GaneshChanda.Api/wwwroot/login-faces/*
+!backend/GaneshChanda.Api/wwwroot/login-faces/.gitkeep

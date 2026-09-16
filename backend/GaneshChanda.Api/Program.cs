@@ -1,5 +1,9 @@
+using System.Text;
 using GaneshChanda.Api.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +14,25 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new() { Title = "Ganesh Chanda API", Version = "v1" });
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "Staff JWT. Example: Bearer {token}",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -17,6 +40,23 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString));
+
+var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is missing.");
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateIssuerSigningKey = true,
+            ValidateLifetime = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
@@ -32,6 +72,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.EnsureCreatedAsync();
+    await SchemaPatch.ApplyAsync(db);
     await DbSeeder.SeedAsync(db);
 }
 
@@ -43,6 +84,9 @@ app.UseSwaggerUI(options =>
 });
 
 app.UseCors("Frontend");
+app.UseStaticFiles();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok", app = "Ganesh Chanda" }));
 

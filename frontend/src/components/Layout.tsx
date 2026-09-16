@@ -1,15 +1,18 @@
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { useAuth } from '../auth'
 
 const links = [
   { to: '/', label: 'Dashboard' },
   { to: '/donors', label: 'Donors' },
   { to: '/donations', label: 'Donations' },
+  { to: '/sign-ins', label: 'Sign-in log' },
 ]
 
 export default function Layout() {
   const [open, setOpen] = useState(false)
+  const { staff, logout } = useAuth()
 
   return (
     <div className="min-h-svh">
@@ -24,7 +27,7 @@ export default function Layout() {
                 Ganesh Chanda
               </span>
               <span className="text-xs tracking-wide text-[#7a5a4a]">
-                Donation management
+                {staff ? `${staff.fullName} · ${staff.role}` : 'Donation management'}
               </span>
             </span>
           </NavLink>
@@ -52,6 +55,13 @@ export default function Layout() {
             >
               Register donor
             </NavLink>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-full px-4 py-2 text-sm font-semibold text-[#6b1d12]"
+            >
+              Sign out
+            </button>
           </nav>
 
           <button
@@ -83,6 +93,16 @@ export default function Layout() {
             >
               Register donor
             </NavLink>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                logout()
+              }}
+              className="rounded-lg px-3 py-2 text-left text-[#6b1d12]"
+            >
+              Sign out
+            </button>
           </div>
         )}
       </header>

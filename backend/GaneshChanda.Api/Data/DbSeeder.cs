@@ -1,4 +1,5 @@
 using GaneshChanda.Api.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace GaneshChanda.Api.Data;
@@ -7,6 +8,8 @@ public static class DbSeeder
 {
     public static async Task SeedAsync(AppDbContext db)
     {
+        await SeedStaffAsync(db);
+
         if (await db.Donors.AnyAsync())
         {
             return;
@@ -51,6 +54,38 @@ public static class DbSeeder
         }
 
         db.Donations.AddRange(donations);
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task SeedStaffAsync(AppDbContext db)
+    {
+        if (await db.StaffMembers.AnyAsync())
+        {
+            return;
+        }
+
+        var hasher = new PasswordHasher<StaffMember>();
+        var admin = new StaffMember
+        {
+            Username = "admin",
+            FullName = "Committee Secretary",
+            Role = "Admin",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        admin.PasswordHash = hasher.HashPassword(admin, "Chanda@2026");
+
+        var clerk = new StaffMember
+        {
+            Username = "clerk",
+            FullName = "Collection Desk",
+            Role = "Clerk",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        clerk.PasswordHash = hasher.HashPassword(clerk, "Clerk@2026");
+
+        db.StaffMembers.AddRange(admin, clerk);
         await db.SaveChangesAsync();
     }
 

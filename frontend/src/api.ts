@@ -1,10 +1,45 @@
-import type { Dashboard, Donation, DonationWrite, Donor, DonorWrite } from './types'
+import type {
+  Dashboard,
+  Donation,
+  DonationWrite,
+  Donor,
+  DonorWrite,
+  LoginAudit,
+  LoginResult,
+  Staff,
+} from './types'
+
+const TOKEN_KEY = 'ganesh-chanda-token'
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+export function setToken(token: string | null) {
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token)
+  } else {
+    localStorage.removeItem(TOKEN_KEY)
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-    ...init,
-  })
+  const token = getToken()
+  const headers = new Headers(init?.headers)
+  if (!headers.has('Content-Type') && init?.body) {
+    headers.set('Content-Type', 'application/json')
+  }
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  const response = await fetch(path, { ...init, headers })
+
+  if (response.status === 401 && !path.includes('/api/auth/login')) {
+    setToken(null)
+    window.location.assign('/login')
+    throw new Error('Please sign in with an authorized staff account.')
+  }
 
   if (!response.ok) {
     let message = `Request failed (${response.status})`
@@ -25,6 +60,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  login: (username: string, password: string, faceImage: string) =>
+    request<LoginResult>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, faceImage }),
+    }),
+  me: () => request<Staff>('/api/auth/me'),
+  loginHistory: () => request<LoginAudit[]>('/api/auth/logins'),
   dashboard: () => request<Dashboard>('/api/dashboard'),
   donors: (search = '') =>
     request<Donor[]>(`/api/donors${search ? `?search=${encodeURIComponent(search)}` : ''}`),
@@ -35,9 +77,7 @@ export const api = {
     request<Donor>(`/api/donors/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteDonor: (id: number) => request<void>(`/api/donors/${id}`, { method: 'DELETE' }),
   donations: (donorId?: number) =>
-    request<Donation[]>(
-      `/api/donations${donorId ? `?donorId=${donorId}` : ''}`,
-    ),
+    request<Donation[]>(`/api/donations${donorId ? `?donorId=${donorId}` : ''}`),
   createDonation: (payload: DonationWrite) =>
     request<Donation>('/api/donations', { method: 'POST', body: JSON.stringify(payload) }),
   deleteDonation: (id: number) => request<void>(`/api/donations/${id}`, { method: 'DELETE' }),

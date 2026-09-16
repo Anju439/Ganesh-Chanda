@@ -75,6 +75,27 @@ export type Dashboard = {
   topDonors: TopDonor[]
 }
 
+export type Staff = {
+  id: number
+  username: string
+  fullName: string
+  role: string
+}
+
+export type LoginResult = {
+  token: string
+  staff: Staff
+}
+
+export type LoginAudit = {
+  id: number
+  staffMemberId: number
+  fullName: string
+  username: string
+  loggedInAt: string
+  faceImageUrl: string
+}
+
 export const PAYMENT_METHODS = ['UPI', 'Cash', 'Bank Transfer', 'Cheque', 'Card'] as const
 
 export const PURPOSES = [
