@@ -36,5 +36,46 @@ public static class SchemaPatch
                 );
             END
             """);
+
+        await db.Database.ExecuteSqlRawAsync("""
+            IF OBJECT_ID(N'dbo.PendingLogins', N'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.PendingLogins (
+                    Id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    StaffMemberId INT NOT NULL,
+                    Token NVARCHAR(64) NOT NULL,
+                    ExpiresAt DATETIME2 NOT NULL,
+                    Completed BIT NOT NULL,
+                    CONSTRAINT FK_PendingLogins_StaffMembers FOREIGN KEY (StaffMemberId)
+                        REFERENCES dbo.StaffMembers(Id)
+                );
+                CREATE UNIQUE INDEX IX_PendingLogins_Token ON dbo.PendingLogins(Token);
+            END
+            """);
+
+        await db.Database.ExecuteSqlRawAsync("""
+            IF OBJECT_ID(N'dbo.LoginAlerts', N'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.LoginAlerts (
+                    Id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    StaffMemberId INT NOT NULL,
+                    FaceImagePath NVARCHAR(260) NULL,
+                    CreatedAt DATETIME2 NOT NULL,
+                    IsRead BIT NOT NULL,
+                    Kind NVARCHAR(40) NOT NULL,
+                    Details NVARCHAR(500) NOT NULL,
+                    CONSTRAINT FK_LoginAlerts_StaffMembers FOREIGN KEY (StaffMemberId)
+                        REFERENCES dbo.StaffMembers(Id)
+                );
+            END
+            """);
+
+        await db.Database.ExecuteSqlRawAsync("""
+            IF OBJECT_ID(N'dbo.LoginAlerts', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.LoginAlerts', N'Kind') IS NULL
+            BEGIN
+                ALTER TABLE dbo.LoginAlerts ADD Kind NVARCHAR(40) NOT NULL CONSTRAINT DF_LoginAlerts_Kind DEFAULT 'FaceLogin';
+                ALTER TABLE dbo.LoginAlerts ADD Details NVARCHAR(500) NOT NULL CONSTRAINT DF_LoginAlerts_Details DEFAULT '';
+            END
+            """);
     }
 }

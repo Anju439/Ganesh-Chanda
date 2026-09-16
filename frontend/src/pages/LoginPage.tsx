@@ -1,21 +1,25 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { PENDING_KEY } from '../api'
 import { useAuth } from '../auth'
-import FaceCapture from '../components/FaceCapture'
 
 const DEMO_ACCOUNTS = [
-  { username: 'admin', password: 'Chanda@2026', label: 'Committee secretary' },
-  { username: 'clerk', password: 'Clerk@2026', label: 'Collection desk' },
+  { username: 'admin', password: 'Chanda@2026', label: 'Main admin' },
+  { username: 'admin1', password: 'Admin1@2026', label: 'Admin 1' },
+  { username: 'admin2', password: 'Admin2@2026', label: 'Admin 2' },
+  { username: 'admin3', password: 'Admin3@2026', label: 'Admin 3' },
+  { username: 'admin4', password: 'Admin4@2026', label: 'Admin 4' },
+  { username: 'admin5', password: 'Admin5@2026', label: 'Admin 5' },
 ] as const
 
 export default function LoginPage() {
-  const { staff, login } = useAuth()
+  const { staff, startLogin } = useAuth()
+  const navigate = useNavigate()
   const location = useLocation()
   const from = (location.state as { from?: string } | null)?.from ?? '/'
   const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('Chanda@2026')
   const [showPassword, setShowPassword] = useState(true)
-  const [faceImage, setFaceImage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -25,14 +29,12 @@ export default function LoginPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!faceImage) {
-      setError('Capture or upload the face of the staff member who is signing in, then press Sign in.')
-      return
-    }
     setSaving(true)
     setError(null)
     try {
-      await login(username.trim(), password.trim(), faceImage)
+      const pending = await startLogin(username.trim(), password.trim())
+      sessionStorage.setItem(PENDING_KEY, JSON.stringify({ ...pending, from }))
+      navigate('/login/face')
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -41,34 +43,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="mx-auto grid min-h-svh max-w-5xl items-center gap-8 px-4 py-8 lg:grid-cols-2">
-      <section className="rounded-3xl bg-[#6b1d12] p-8 text-[#fff8ea] shadow-lg">
-        <p className="text-sm uppercase tracking-[0.2em] text-[#e8a317]">Authorized staff only</p>
-        <h1 className="font-display mt-3 text-4xl">Ganesh Chanda desk</h1>
-        <p className="mt-4 text-[#f3d9b0]">
-          Use the committee username, not an email. The demo password is case-sensitive and includes
-          the @ sign. Capture a face photo, then sign in.
-        </p>
-        <div className="mt-6 space-y-2 rounded-2xl bg-[#4d140c] p-4 text-sm text-[#f3d9b0]">
-          <p className="font-semibold text-[#e8a317]">Working demo login</p>
-          <p>
-            Username <span className="font-mono text-[#fff8ea]">admin</span> · password{' '}
-            <span className="font-mono text-[#fff8ea]">Chanda@2026</span>
-          </p>
-          <p>
-            Username <span className="font-mono text-[#fff8ea]">clerk</span> · password{' '}
-            <span className="font-mono text-[#fff8ea]">Clerk@2026</span>
-          </p>
-        </div>
-      </section>
-
+    <div className="mx-auto flex min-h-svh max-w-md flex-col justify-center px-4 py-8">
       <form
         onSubmit={onSubmit}
         autoComplete="off"
         className="space-y-4 rounded-3xl border border-[#edd8b8] bg-[#fffdf8] p-6 shadow-sm"
       >
-        <h2 className="font-display text-2xl text-[#6b1d12]">Staff sign in</h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col items-center text-center">
+          <img
+            src="/ganesh.png"
+            alt="Lord Ganesha"
+            className="h-20 w-20 rounded-full border-2 border-[#e8a317] object-cover bg-[#6b1d12]"
+          />
+          <p className="mt-3 text-sm uppercase tracking-[0.2em] text-[#e07a2f]">Shri Ganeshaya Namah</p>
+          <h1 className="font-display mt-1 text-3xl text-[#6b1d12]">Ganesh Chanda</h1>
+          <p className="mt-2 text-sm text-[#7a5a4a]">
+            Only Main Admin and Admin 1–5 can sign in. After password check, a face photo is
+            required. Photos from Admin 1–5 are sent to Main Admin.
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-2">
           {DEMO_ACCOUNTS.map((account) => (
             <button
               key={account.username}
@@ -78,18 +72,16 @@ export default function LoginPage() {
                 setPassword(account.password)
                 setError(null)
               }}
-              className="rounded-full border border-[#edd8b8] px-3 py-1.5 text-sm font-semibold text-[#6b1d12]"
+              className="rounded-full border border-[#edd8b8] px-3 py-1 text-xs font-semibold text-[#6b1d12]"
             >
-              Fill {account.label}
+              {account.label}
             </button>
           ))}
         </div>
-        <FaceCapture photo={faceImage} onCapture={(value) => setFaceImage(value || null)} />
         <label className="block text-sm font-semibold text-[#6b1d12]">
           Username
           <input
             required
-            name="staff-username"
             autoComplete="off"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -100,7 +92,6 @@ export default function LoginPage() {
           Password
           <input
             required
-            name="staff-password"
             autoComplete="off"
             type={showPassword ? 'text' : 'password'}
             value={password}
@@ -123,7 +114,7 @@ export default function LoginPage() {
           disabled={saving}
           className="w-full rounded-full bg-[#e07a2f] py-3 font-semibold text-white disabled:opacity-60"
         >
-          {saving ? 'Checking…' : 'Sign in'}
+          {saving ? 'Checking…' : 'Continue to face capture'}
         </button>
       </form>
     </div>

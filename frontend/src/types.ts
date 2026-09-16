@@ -80,11 +80,20 @@ export type Staff = {
   username: string
   fullName: string
   role: string
+  isMainAdmin: boolean
+}
+
+export type PendingLogin = {
+  pendingToken: string
+  requiresFace: boolean
+  notifyMainAdmin: boolean
+  staff: Staff
 }
 
 export type LoginResult = {
   token: string
   staff: Staff
+  sentToMainAdmin: boolean
 }
 
 export type LoginAudit = {
@@ -94,6 +103,19 @@ export type LoginAudit = {
   username: string
   loggedInAt: string
   faceImageUrl: string
+}
+
+export type InboxAlert = {
+  id: number
+  staffMemberId: number
+  fullName: string
+  username: string
+  role: string
+  kind: string
+  details: string
+  createdAt: string
+  faceImageUrl: string
+  isRead: boolean
 }
 
 export const PAYMENT_METHODS = ['UPI', 'Cash', 'Bank Transfer', 'Cheque', 'Card'] as const

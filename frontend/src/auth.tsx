@@ -7,12 +7,13 @@ import {
   type ReactNode,
 } from 'react'
 import { api, getToken, setToken } from './api'
-import type { Staff } from './types'
+import type { LoginResult, PendingLogin, Staff } from './types'
 
 type AuthContextValue = {
   staff: Staff | null
   ready: boolean
-  login: (username: string, password: string, faceImage: string) => Promise<void>
+  startLogin: (username: string, password: string) => Promise<PendingLogin>
+  completeFace: (pendingToken: string, faceImage: string) => Promise<LoginResult>
   logout: () => void
 }
 
@@ -42,10 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       staff,
       ready,
-      login: async (username, password, faceImage) => {
-        const result = await api.login(username, password, faceImage)
+      startLogin: (username, password) => api.startLogin(username, password),
+      completeFace: async (pendingToken, faceImage) => {
+        const result = await api.completeFaceLogin(pendingToken, faceImage)
         setToken(result.token)
         setStaff(result.staff)
+        return result
       },
       logout: () => {
         setToken(null)

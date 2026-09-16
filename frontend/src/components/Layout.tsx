@@ -13,6 +13,9 @@ const links = [
 export default function Layout() {
   const [open, setOpen] = useState(false)
   const { staff, logout } = useAuth()
+  const navLinks = staff?.isMainAdmin
+    ? [...links, { to: '/inbox', label: 'Main inbox' }]
+    : links
 
   return (
     <div className="min-h-svh">
@@ -33,7 +36,7 @@ export default function Layout() {
           </NavLink>
 
           <nav className="hidden items-center gap-1 md:flex">
-            {links.map((link) => (
+            {navLinks.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
@@ -75,7 +78,7 @@ export default function Layout() {
         </div>
         {open && (
           <div className="flex flex-col gap-1 border-t border-[#edd8b8] px-4 py-3 md:hidden">
-            {links.map((link) => (
+            {navLinks.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}

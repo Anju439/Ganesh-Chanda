@@ -78,6 +78,11 @@ public class DonorsController : ControllerBase
 
         _db.Donors.Add(donor);
         await _db.SaveChangesAsync();
+        await MainAdminNotifier.NotifyAsync(
+            _db,
+            User,
+            "DonorRegister",
+            $"Donor {donor.FullName} ({donor.Phone}, {donor.City}) was registered.");
 
         return CreatedAtAction(nameof(GetById), new { id = donor.Id }, Map(donor));
     }

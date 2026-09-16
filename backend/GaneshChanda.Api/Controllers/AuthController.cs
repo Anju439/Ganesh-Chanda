@@ -31,7 +31,7 @@ public class AuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("login")]
-    public async Task<ActionResult<LoginResponse>> Login(LoginRequest request)
+    public async Task<ActionResult<PendingLoginResponse>> Login(LoginRequest request)
     {
         var username = request.Username.Trim();
         var password = request.Password.Trim();
@@ -39,18 +39,51 @@ public class AuthController : ControllerBase
             .FirstOrDefaultAsync(s => s.Username.ToLower() == username.ToLower());
         if (staff is null || !staff.IsActive)
         {
-            return Unauthorized(new { message = "This person is not on the authorized staff list. Use username admin or clerk — not an email address." });
+            return Unauthorized(new { message = "This person is not on the authorized list. Use admin, admin1, admin2, admin3, admin4, or admin5." });
         }
 
-        var passwordResult = _hasher.VerifyHashedPassword(staff, staff.PasswordHash, password);
-        var demoPasswordMatches =
-            (staff.Username.Equals(StaffAccounts.AdminUsername, StringComparison.OrdinalIgnoreCase)
-             && password.Equals(StaffAccounts.AdminPassword, StringComparison.OrdinalIgnoreCase))
-            || (staff.Username.Equals(StaffAccounts.ClerkUsername, StringComparison.OrdinalIgnoreCase)
-                && password.Equals(StaffAccounts.ClerkPassword, StringComparison.OrdinalIgnoreCase));
-        if (passwordResult == PasswordVerificationResult.Failed && !demoPasswordMatches)
+        var passwordOk = _hasher.VerifyHashedPassword(staff, staff.PasswordHash, password) != PasswordVerificationResult.Failed
+            || StaffAccounts.PasswordMatches(username, password);
+        if (!passwordOk)
         {
-            return Unauthorized(new { message = "That password does not match this staff account. For the demo use Chanda@2026 with admin, or Clerk@2026 with clerk." });
+            return Unauthorized(new { message = "That password does not match this staff account." });
+        }
+
+        var pending = new PendingLogin
+        {
+            StaffMemberId = staff.Id,
+            Token = Guid.NewGuid().ToString("N"),
+            ExpiresAt = DateTime.UtcNow.AddMinutes(10),
+            Completed = false
+        };
+        _db.PendingLogins.Add(pending);
+        await _db.SaveChangesAsync();
+
+        return Ok(new PendingLoginResponse
+        {
+            PendingToken = pending.Token,
+            RequiresFace = true,
+            NotifyMainAdmin = !StaffAccounts.IsMain(staff),
+            Staff = Map(staff)
+        });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("login/face")]
+    public async Task<ActionResult<LoginResponse>> CompleteFace(FaceLoginRequest request)
+    {
+        var pending = await _db.PendingLogins
+            .Include(p => p.StaffMember)
+            .FirstOrDefaultAsync(p => p.Token == request.PendingToken);
+        if (pending is null || pending.Completed || pending.ExpiresAt < DateTime.UtcNow)
+        {
+            return Unauthorized(new { message = "Sign-in expired. Enter your username and password again." });
+        }
+
+        var staff = pending.StaffMember;
+        if (!staff.IsActive)
+        {
+            return Unauthorized(new { message = "This staff account is no longer active." });
         }
 
         string facePath;
@@ -64,6 +97,7 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
 
+        pending.Completed = true;
         _db.LoginAudits.Add(new LoginAudit
         {
             StaffMemberId = staff.Id,
@@ -71,12 +105,29 @@ public class AuthController : ControllerBase
             FaceImagePath = facePath,
             IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
         });
+
+        var sentToMain = false;
+        if (!StaffAccounts.IsMain(staff))
+        {
+            _db.LoginAlerts.Add(new LoginAlert
+            {
+                StaffMemberId = staff.Id,
+                FaceImagePath = facePath,
+                CreatedAt = DateTime.UtcNow,
+                IsRead = false,
+                Kind = "FaceLogin",
+                Details = $"{staff.FullName} ({staff.Username}) signed in. Face photo sent to Main Admin."
+            });
+            sentToMain = true;
+        }
+
         await _db.SaveChangesAsync();
 
         return Ok(new LoginResponse
         {
             Token = CreateToken(staff),
-            Staff = Map(staff)
+            Staff = Map(staff),
+            SentToMainAdmin = sentToMain
         });
     }
 
@@ -84,14 +135,8 @@ public class AuthController : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<StaffDto>> Me()
     {
-        var id = UserId();
-        if (id is null)
-        {
-            return Unauthorized();
-        }
-
-        var staff = await _db.StaffMembers.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
-        if (staff is null || !staff.IsActive)
+        var staff = await CurrentStaff();
+        if (staff is null)
         {
             return Unauthorized();
         }
@@ -120,10 +165,61 @@ public class AuthController : ControllerBase
         }));
     }
 
-    private int? UserId()
+    [Authorize]
+    [HttpGet("alerts")]
+    public async Task<ActionResult<IEnumerable<LoginAlertDto>>> Alerts()
+    {
+        var staff = await CurrentStaff();
+        if (staff is null)
+        {
+            return Unauthorized();
+        }
+
+        if (!StaffAccounts.IsMain(staff))
+        {
+            return Forbid();
+        }
+
+        var rows = await _db.LoginAlerts.AsNoTracking()
+            .Include(a => a.StaffMember)
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(50)
+            .ToListAsync();
+
+        return Ok(rows.Select(MapAlert));
+    }
+
+    [Authorize]
+    [HttpPost("alerts/{id:int}/read")]
+    public async Task<IActionResult> MarkRead(int id)
+    {
+        var staff = await CurrentStaff();
+        if (staff is null || !StaffAccounts.IsMain(staff))
+        {
+            return Forbid();
+        }
+
+        var alert = await _db.LoginAlerts.FindAsync(id);
+        if (alert is null)
+        {
+            return NotFound();
+        }
+
+        alert.IsRead = true;
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    private async Task<StaffMember?> CurrentStaff()
     {
         var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(value, out var id) ? id : null;
+        if (!int.TryParse(value, out var id))
+        {
+            return null;
+        }
+
+        var staff = await _db.StaffMembers.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+        return staff is { IsActive: true } ? staff : null;
     }
 
     private string CreateToken(StaffMember staff)
@@ -156,6 +252,21 @@ public class AuthController : ControllerBase
         Id = staff.Id,
         Username = staff.Username,
         FullName = staff.FullName,
-        Role = staff.Role
+        Role = staff.Role,
+        IsMainAdmin = StaffAccounts.IsMain(staff)
+    };
+
+    private static LoginAlertDto MapAlert(LoginAlert alert) => new()
+    {
+        Id = alert.Id,
+        StaffMemberId = alert.StaffMemberId,
+        FullName = alert.StaffMember.FullName,
+        Username = alert.StaffMember.Username,
+        Role = alert.StaffMember.Role,
+        Kind = alert.Kind,
+        Details = alert.Details,
+        CreatedAt = alert.CreatedAt,
+        FaceImageUrl = alert.FaceImagePath,
+        IsRead = alert.IsRead
     };
 }

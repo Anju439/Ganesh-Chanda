@@ -13,6 +13,8 @@ public class AppDbContext : DbContext
     public DbSet<Donation> Donations => Set<Donation>();
     public DbSet<StaffMember> StaffMembers => Set<StaffMember>();
     public DbSet<LoginAudit> LoginAudits => Set<LoginAudit>();
+    public DbSet<PendingLogin> PendingLogins => Set<PendingLogin>();
+    public DbSet<LoginAlert> LoginAlerts => Set<LoginAlert>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -66,6 +68,31 @@ public class AppDbContext : DbContext
             entity.HasOne(l => l.StaffMember)
                 .WithMany(s => s.LoginAudits)
                 .HasForeignKey(l => l.StaffMemberId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PendingLogin>(entity =>
+        {
+            entity.ToTable("PendingLogins");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.Token).HasMaxLength(64).IsRequired();
+            entity.HasIndex(p => p.Token).IsUnique();
+            entity.HasOne(p => p.StaffMember)
+                .WithMany()
+                .HasForeignKey(p => p.StaffMemberId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<LoginAlert>(entity =>
+        {
+            entity.ToTable("LoginAlerts");
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.FaceImagePath).HasMaxLength(260);
+            entity.Property(a => a.Kind).HasMaxLength(40).IsRequired();
+            entity.Property(a => a.Details).HasMaxLength(500);
+            entity.HasOne(a => a.StaffMember)
+                .WithMany()
+                .HasForeignKey(a => a.StaffMemberId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

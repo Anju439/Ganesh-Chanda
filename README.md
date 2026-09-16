@@ -6,14 +6,20 @@ The stack is a **React** (Vite + TypeScript) frontend, an **ASP.NET Core 8** Web
 
 ## Access control
 
-The donor register is not public. Staff must sign in with a committee username and password. Login also requires a **face photo** of the person at the desk (webcam capture, or a photo file if the camera is unavailable). That photo is stored with the sign-in time so the mandal can see who opened the ledger.
+The donor register is not public. Only **six** committee logins exist: Main Admin plus Admin 1–5.
 
-Seeded accounts (change these before real use):
+1. Enter username and password.
+2. Capture a face photo.
+3. If **Admin 1–5** sign in or register a donor/donation, those details (including the face photo on login) are sent to the **Main Admin inbox** (`admin`). They are not sent to the other admin accounts. Main Admin’s own login is stored in the sign-in log only.
 
 | Username | Password | Role |
 | --- | --- | --- |
-| `admin` | `Chanda@2026` | Committee Secretary |
-| `clerk` | `Clerk@2026` | Collection Desk |
+| `admin` | `Chanda@2026` | Main Admin — receives all alerts |
+| `admin1` | `Admin1@2026` | Admin 1 |
+| `admin2` | `Admin2@2026` | Admin 2 |
+| `admin3` | `Admin3@2026` | Admin 3 |
+| `admin4` | `Admin4@2026` | Admin 4 |
+| `admin5` | `Admin5@2026` | Admin 5 |
 
 ## What staff can do after login
 
@@ -22,6 +28,7 @@ Seeded accounts (change these before real use):
 - Auto-assign receipt numbers such as `GC-2026-0015`
 - View totals, monthly trend, purpose split, recent gifts, and top donors
 - Review the sign-in log with captured faces
+- Main Admin reviews the inbox of Admin 1–5 logins and registrations
 
 The API creates the `GaneshChanda` database on first run and seeds sample donors and gifts.
 
@@ -80,9 +87,11 @@ Vite proxies `/api` to the backend, so the browser only needs the frontend URL.
 
 | Method | Path | Description |
 | --- | --- | --- |
-| POST | `/api/auth/login` | Staff login with password + face photo |
+| POST | `/api/auth/login` | Username and password (then face step) |
+| POST | `/api/auth/login/face` | Capture face; notifies Main Admin if not `admin` |
 | GET | `/api/auth/me` | Current staff (JWT) |
 | GET | `/api/auth/logins` | Sign-in log with face photos |
+| GET | `/api/auth/alerts` | Main Admin inbox |
 | GET | `/api/health` | Liveness |
 | GET | `/api/dashboard` | Collection summary (auth) |
 | GET/POST | `/api/donors` | List / register (auth) |

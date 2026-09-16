@@ -4,12 +4,15 @@ import type {
   DonationWrite,
   Donor,
   DonorWrite,
+  InboxAlert,
   LoginAudit,
   LoginResult,
+  PendingLogin,
   Staff,
 } from './types'
 
 const TOKEN_KEY = 'ganesh-chanda-token'
+export const PENDING_KEY = 'ganesh-chanda-pending'
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
@@ -60,13 +63,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  login: (username: string, password: string, faceImage: string) =>
-    request<LoginResult>('/api/auth/login', {
+  startLogin: (username: string, password: string) =>
+    request<PendingLogin>('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password, faceImage }),
+      body: JSON.stringify({ username, password }),
+    }),
+  completeFaceLogin: (pendingToken: string, faceImage: string) =>
+    request<LoginResult>('/api/auth/login/face', {
+      method: 'POST',
+      body: JSON.stringify({ pendingToken, faceImage }),
     }),
   me: () => request<Staff>('/api/auth/me'),
   loginHistory: () => request<LoginAudit[]>('/api/auth/logins'),
+  alerts: () => request<InboxAlert[]>('/api/auth/alerts'),
+  markAlertRead: (id: number) =>
+    request<void>(`/api/auth/alerts/${id}/read`, { method: 'POST' }),
   dashboard: () => request<Dashboard>('/api/dashboard'),
   donors: (search = '') =>
     request<Donor[]>(`/api/donors${search ? `?search=${encodeURIComponent(search)}` : ''}`),

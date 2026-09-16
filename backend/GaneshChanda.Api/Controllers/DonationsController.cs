@@ -93,6 +93,11 @@ public class DonationsController : ControllerBase
 
         _db.Donations.Add(donation);
         await _db.SaveChangesAsync();
+        await MainAdminNotifier.NotifyAsync(
+            _db,
+            User,
+            "DonationRecord",
+            $"Donation {donation.ReceiptNumber} of {donation.Amount:0} for {donor.FullName} was recorded.");
 
         donation.Donor = donor;
         return CreatedAtAction(nameof(GetById), new { id = donation.Id }, Map(donation));

@@ -6,11 +6,31 @@ namespace GaneshChanda.Api.Data;
 
 public static class StaffAccounts
 {
-    public const string AdminUsername = "admin";
-    public const string AdminPassword = "Chanda@2026";
-    public const string ClerkUsername = "clerk";
-    public const string ClerkPassword = "Clerk@2026";
+    public const string MainUsername = "admin";
+    public const string MainPassword = "Chanda@2026";
+    public const string MainRole = "MainAdmin";
+
+    public static readonly StaffSeed[] Allowed =
+    [
+        new("admin", "Chanda@2026", "Main Admin", "MainAdmin"),
+        new("admin1", "Admin1@2026", "Admin 1", "Admin1"),
+        new("admin2", "Admin2@2026", "Admin 2", "Admin2"),
+        new("admin3", "Admin3@2026", "Admin 3", "Admin3"),
+        new("admin4", "Admin4@2026", "Admin 4", "Admin4"),
+        new("admin5", "Admin5@2026", "Admin 5", "Admin5")
+    ];
+
+    public static bool IsMain(StaffMember staff) =>
+        staff.Role.Equals(MainRole, StringComparison.OrdinalIgnoreCase)
+        || staff.Username.Equals(MainUsername, StringComparison.OrdinalIgnoreCase);
+
+    public static bool PasswordMatches(string username, string password) =>
+        Allowed.Any(account =>
+            account.Username.Equals(username, StringComparison.OrdinalIgnoreCase)
+            && account.Password.Equals(password, StringComparison.OrdinalIgnoreCase));
 }
+
+public readonly record struct StaffSeed(string Username, string Password, string FullName, string Role);
 
 public static class DbSeeder
 {
@@ -68,42 +88,48 @@ public static class DbSeeder
     private static async Task SeedStaffAsync(AppDbContext db)
     {
         var hasher = new PasswordHasher<StaffMember>();
-        await UpsertStaffAsync(db, hasher, StaffAccounts.AdminUsername, StaffAccounts.AdminPassword, "Committee Secretary", "Admin");
-        await UpsertStaffAsync(db, hasher, StaffAccounts.ClerkUsername, StaffAccounts.ClerkPassword, "Collection Desk", "Clerk");
+        var allowedNames = StaffAccounts.Allowed.Select(a => a.Username.ToLower()).ToHashSet();
+
+        foreach (var account in StaffAccounts.Allowed)
+        {
+            await UpsertStaffAsync(db, hasher, account);
+        }
+
+        var extras = await db.StaffMembers
+            .Where(s => !allowedNames.Contains(s.Username.ToLower()))
+            .ToListAsync();
+        foreach (var extra in extras)
+        {
+            extra.IsActive = false;
+        }
+
         await db.SaveChangesAsync();
     }
 
-    private static async Task UpsertStaffAsync(
-        AppDbContext db,
-        PasswordHasher<StaffMember> hasher,
-        string username,
-        string password,
-        string fullName,
-        string role)
+    private static async Task UpsertStaffAsync(AppDbContext db, PasswordHasher<StaffMember> hasher, StaffSeed account)
     {
-        var staff = await db.StaffMembers.FirstOrDefaultAsync(s => s.Username == username);
+        var staff = await db.StaffMembers.FirstOrDefaultAsync(s => s.Username == account.Username);
         if (staff is null)
         {
             staff = new StaffMember
             {
-                Username = username,
-                FullName = fullName,
-                Role = role,
+                Username = account.Username,
+                FullName = account.FullName,
+                Role = account.Role,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
-            staff.PasswordHash = hasher.HashPassword(staff, password);
+            staff.PasswordHash = hasher.HashPassword(staff, account.Password);
             db.StaffMembers.Add(staff);
             return;
         }
 
-        staff.FullName = fullName;
-        staff.Role = role;
+        staff.FullName = account.FullName;
+        staff.Role = account.Role;
         staff.IsActive = true;
-        var verified = hasher.VerifyHashedPassword(staff, staff.PasswordHash, password);
-        if (verified == PasswordVerificationResult.Failed)
+        if (hasher.VerifyHashedPassword(staff, staff.PasswordHash, account.Password) == PasswordVerificationResult.Failed)
         {
-            staff.PasswordHash = hasher.HashPassword(staff, password);
+            staff.PasswordHash = hasher.HashPassword(staff, account.Password);
         }
     }
 
