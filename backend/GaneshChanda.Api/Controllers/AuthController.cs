@@ -34,16 +34,18 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<LoginResponse>> Login(LoginRequest request)
     {
         var username = request.Username.Trim();
-        var staff = await _db.StaffMembers.FirstOrDefaultAsync(s => s.Username == username);
+        var password = request.Password.Trim();
+        var staff = await _db.StaffMembers
+            .FirstOrDefaultAsync(s => s.Username.ToLower() == username.ToLower());
         if (staff is null || !staff.IsActive)
         {
-            return Unauthorized(new { message = "This person is not on the authorized staff list." });
+            return Unauthorized(new { message = "This person is not on the authorized staff list. Use username admin or clerk — not an email address." });
         }
 
-        var passwordResult = _hasher.VerifyHashedPassword(staff, staff.PasswordHash, request.Password);
+        var passwordResult = _hasher.VerifyHashedPassword(staff, staff.PasswordHash, password);
         if (passwordResult == PasswordVerificationResult.Failed)
         {
-            return Unauthorized(new { message = "Username or password is incorrect." });
+            return Unauthorized(new { message = "That password does not match this staff account. For the demo use Chanda@2026 with admin, or Clerk@2026 with clerk. The @ and capital letters are required." });
         }
 
         string facePath;

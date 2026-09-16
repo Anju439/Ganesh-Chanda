@@ -4,6 +4,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GaneshChanda.Api.Data;
 
+public static class StaffAccounts
+{
+    public const string AdminUsername = "admin";
+    public const string AdminPassword = "Chanda@2026";
+    public const string ClerkUsername = "clerk";
+    public const string ClerkPassword = "Clerk@2026";
+}
+
 public static class DbSeeder
 {
     public static async Task SeedAsync(AppDbContext db)
@@ -59,34 +67,44 @@ public static class DbSeeder
 
     private static async Task SeedStaffAsync(AppDbContext db)
     {
-        if (await db.StaffMembers.AnyAsync())
+        var hasher = new PasswordHasher<StaffMember>();
+        await UpsertStaffAsync(db, hasher, StaffAccounts.AdminUsername, StaffAccounts.AdminPassword, "Committee Secretary", "Admin");
+        await UpsertStaffAsync(db, hasher, StaffAccounts.ClerkUsername, StaffAccounts.ClerkPassword, "Collection Desk", "Clerk");
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task UpsertStaffAsync(
+        AppDbContext db,
+        PasswordHasher<StaffMember> hasher,
+        string username,
+        string password,
+        string fullName,
+        string role)
+    {
+        var staff = await db.StaffMembers.FirstOrDefaultAsync(s => s.Username == username);
+        if (staff is null)
         {
+            staff = new StaffMember
+            {
+                Username = username,
+                FullName = fullName,
+                Role = role,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            staff.PasswordHash = hasher.HashPassword(staff, password);
+            db.StaffMembers.Add(staff);
             return;
         }
 
-        var hasher = new PasswordHasher<StaffMember>();
-        var admin = new StaffMember
+        staff.FullName = fullName;
+        staff.Role = role;
+        staff.IsActive = true;
+        var verified = hasher.VerifyHashedPassword(staff, staff.PasswordHash, password);
+        if (verified == PasswordVerificationResult.Failed)
         {
-            Username = "admin",
-            FullName = "Committee Secretary",
-            Role = "Admin",
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-        admin.PasswordHash = hasher.HashPassword(admin, "Chanda@2026");
-
-        var clerk = new StaffMember
-        {
-            Username = "clerk",
-            FullName = "Collection Desk",
-            Role = "Clerk",
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-        clerk.PasswordHash = hasher.HashPassword(clerk, "Clerk@2026");
-
-        db.StaffMembers.AddRange(admin, clerk);
-        await db.SaveChangesAsync();
+            staff.PasswordHash = hasher.HashPassword(staff, password);
+        }
     }
 
     private static Donation Gift(Donor donor, decimal amount, int daysAgo, string method, string purpose, string notes)
