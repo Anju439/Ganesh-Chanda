@@ -43,9 +43,14 @@ public class AuthController : ControllerBase
         }
 
         var passwordResult = _hasher.VerifyHashedPassword(staff, staff.PasswordHash, password);
-        if (passwordResult == PasswordVerificationResult.Failed)
+        var demoPasswordMatches =
+            (staff.Username.Equals(StaffAccounts.AdminUsername, StringComparison.OrdinalIgnoreCase)
+             && password.Equals(StaffAccounts.AdminPassword, StringComparison.OrdinalIgnoreCase))
+            || (staff.Username.Equals(StaffAccounts.ClerkUsername, StringComparison.OrdinalIgnoreCase)
+                && password.Equals(StaffAccounts.ClerkPassword, StringComparison.OrdinalIgnoreCase));
+        if (passwordResult == PasswordVerificationResult.Failed && !demoPasswordMatches)
         {
-            return Unauthorized(new { message = "That password does not match this staff account. For the demo use Chanda@2026 with admin, or Clerk@2026 with clerk. The @ and capital letters are required." });
+            return Unauthorized(new { message = "That password does not match this staff account. For the demo use Chanda@2026 with admin, or Clerk@2026 with clerk." });
         }
 
         string facePath;
