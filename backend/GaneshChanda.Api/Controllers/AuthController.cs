@@ -49,6 +49,27 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "That password does not match this staff account." });
         }
 
+        // Main Admin signs in with credentials only. Staff accounts must capture a face photo.
+        if (StaffAccounts.IsMain(staff))
+        {
+            _db.LoginAudits.Add(new LoginAudit
+            {
+                StaffMemberId = staff.Id,
+                LoggedInAt = DateTime.UtcNow,
+                FaceImagePath = string.Empty,
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
+            });
+            await _db.SaveChangesAsync();
+
+            return Ok(new PendingLoginResponse
+            {
+                Token = CreateToken(staff),
+                RequiresFace = false,
+                NotifyMainAdmin = false,
+                Staff = Map(staff)
+            });
+        }
+
         var pending = new PendingLogin
         {
             StaffMemberId = staff.Id,
@@ -63,7 +84,7 @@ public class AuthController : ControllerBase
         {
             PendingToken = pending.Token,
             RequiresFace = true,
-            NotifyMainAdmin = !StaffAccounts.IsMain(staff),
+            NotifyMainAdmin = true,
             Staff = Map(staff)
         });
     }
@@ -148,6 +169,12 @@ public class AuthController : ControllerBase
     [HttpGet("logins")]
     public async Task<ActionResult<IEnumerable<LoginAuditDto>>> Logins()
     {
+        var staff = await CurrentStaff();
+        if (staff is null || !StaffAccounts.IsMain(staff))
+        {
+            return Forbid();
+        }
+
         var rows = await _db.LoginAudits.AsNoTracking()
             .Include(l => l.StaffMember)
             .OrderByDescending(l => l.LoggedInAt)

@@ -59,22 +59,14 @@ export default function DashboardPage() {
           Ganesh Chanda collection desk
         </h1>
         <p className="mt-3 max-w-2xl text-[#f3d9b0]">
-          Register donors, record chanda, and watch the festival fund grow. Seed data is loaded so
-          you can explore the ledger immediately.
+          View the Ganesh Chanda collection ledger publicly. Authorized staff can sign in to add donors and record donations.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link
-            to="/donors/new"
-            className="rounded-full bg-[#e8a317] px-4 py-2 text-sm font-semibold text-[#4a1a10] no-underline"
-          >
-            Register a donor
-          </Link>
-          <Link
-            to="/donations/new"
-            className="rounded-full border border-[#e8a317]/50 px-4 py-2 text-sm font-semibold text-[#fff8ea] no-underline"
-          >
-            Record a donation
-          </Link>
+          {staff ? (
+            <Link to="/donors/new" className="rounded-full bg-[#e8a317] px-4 py-2 text-sm font-semibold text-[#4a1a10] no-underline">Add donor & donation</Link>
+          ) : (
+            <Link to="/login" className="rounded-full bg-[#e8a317] px-4 py-2 text-sm font-semibold text-[#4a1a10] no-underline">Staff login</Link>
+          )}
           {staff?.isMainAdmin && (
             <Link
               to="/inbox"

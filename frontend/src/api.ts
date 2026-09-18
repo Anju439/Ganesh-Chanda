@@ -4,6 +4,7 @@ import type {
   DonationWrite,
   Donor,
   DonorWrite,
+  DonorRegistration,
   InboxAlert,
   LoginAudit,
   LoginResult,
@@ -84,6 +85,8 @@ export const api = {
   donor: (id: number) => request<Donor>(`/api/donors/${id}`),
   createDonor: (payload: DonorWrite) =>
     request<Donor>('/api/donors', { method: 'POST', body: JSON.stringify(payload) }),
+  registerDonorWithDonation: (payload: DonorRegistration) =>
+    request<Donor>('/api/donors/register-with-donation', { method: 'POST', body: JSON.stringify(payload) }),
   updateDonor: (id: number, payload: DonorWrite) =>
     request<Donor>(`/api/donors/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteDonor: (id: number) => request<void>(`/api/donors/${id}`, { method: 'DELETE' }),

@@ -16,18 +16,18 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/login/face" element={<LoginFacePage />} />
-      <Route element={<RequireAuth />}>
-        <Route element={<Layout />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="donors" element={<DonorsPage />} />
+      <Route element={<Layout />}>
+        <Route index element={<DashboardPage />} />
+        <Route path="donors" element={<DonorsPage />} />
+        <Route path="donations" element={<DonationsPage />} />
+        <Route element={<RequireAuth />}>
           <Route path="donors/new" element={<DonorFormPage />} />
           <Route path="donors/:id/edit" element={<DonorFormPage />} />
-          <Route path="donations" element={<DonationsPage />} />
           <Route path="donations/new" element={<DonationFormPage />} />
           <Route path="sign-ins" element={<LoginLogPage />} />
           <Route path="inbox" element={<AlertsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   )

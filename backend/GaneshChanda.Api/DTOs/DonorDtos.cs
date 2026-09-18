@@ -15,6 +15,7 @@ public class DonorDto
     public DateTime CreatedAt { get; set; }
     public int DonationCount { get; set; }
     public decimal TotalDonated { get; set; }
+    public DateTime? LastDonationDate { get; set; }
 }
 
 public class DonorWriteDto
@@ -39,4 +40,23 @@ public class DonorWriteDto
 
     [StringLength(12)]
     public string Pincode { get; set; } = string.Empty;
+}
+
+
+public class DonorRegistrationDto : DonorWriteDto
+{
+    [Required, Range(1, 10_000_000)]
+    public decimal Amount { get; set; }
+
+    [Required]
+    public DateTime DonationDate { get; set; }
+
+    [Required, StringLength(40)]
+    public string PaymentMethod { get; set; } = "UPI";
+
+    [Required, StringLength(80)]
+    public string Purpose { get; set; } = "Ganesh Utsav";
+
+    [StringLength(400)]
+    public string Notes { get; set; } = string.Empty;
 }

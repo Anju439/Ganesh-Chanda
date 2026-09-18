@@ -10,6 +10,7 @@ export type Donor = {
   createdAt: string
   donationCount: number
   totalDonated: number
+  lastDonationDate: string | null
 }
 
 export type DonorWrite = {
@@ -33,6 +34,14 @@ export type Donation = {
   receiptNumber: string
   notes: string
   createdAt: string
+}
+
+export type DonorRegistration = DonorWrite & {
+  amount: number
+  donationDate: string
+  paymentMethod: string
+  purpose: string
+  notes: string
 }
 
 export type DonationWrite = {
@@ -85,6 +94,7 @@ export type Staff = {
 
 export type PendingLogin = {
   pendingToken: string
+  token: string
   requiresFace: boolean
   notifyMainAdmin: boolean
   staff: Staff

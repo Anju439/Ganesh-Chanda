@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { dateInputValue } from '../format'
 import { PAYMENT_METHODS, PURPOSES, type DonationWrite, type Donor } from '../types'
@@ -15,6 +15,8 @@ const empty: DonationWrite = {
 
 export default function DonationFormPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const requestedDonorId = Number(searchParams.get('donorId') || 0)
   const [donors, setDonors] = useState<Donor[]>([])
   const [form, setForm] = useState<DonationWrite>(empty)
   const [error, setError] = useState<string | null>(null)
@@ -26,9 +28,8 @@ export default function DonationFormPage() {
       .donors()
       .then((rows) => {
         setDonors(rows)
-        if (rows[0]) {
-          setForm((current) => ({ ...current, donorId: rows[0].id }))
-        }
+        const selected = rows.find((d) => d.id === requestedDonorId) ?? rows[0]
+        if (selected) setForm((current) => ({ ...current, donorId: selected.id }))
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))

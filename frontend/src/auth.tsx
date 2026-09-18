@@ -43,7 +43,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       staff,
       ready,
-      startLogin: (username, password) => api.startLogin(username, password),
+      startLogin: async (username, password) => {
+        const result = await api.startLogin(username, password)
+        if (!result.requiresFace && result.token) {
+          setToken(result.token)
+          setStaff(result.staff)
+        }
+        return result
+      },
       completeFace: async (pendingToken, faceImage) => {
         const result = await api.completeFaceLogin(pendingToken, faceImage)
         setToken(result.token)

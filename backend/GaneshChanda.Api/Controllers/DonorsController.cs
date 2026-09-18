@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GaneshChanda.Api.Controllers;
 
-[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class DonorsController : ControllerBase
@@ -19,6 +18,7 @@ public class DonorsController : ControllerBase
         _db = db;
     }
 
+    [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<IEnumerable<DonorDto>>> GetAll([FromQuery] string? search)
     {
@@ -38,9 +38,10 @@ public class DonorsController : ControllerBase
             .OrderBy(d => d.FullName)
             .ToListAsync();
 
-        return Ok(donors.Select(Map));
+        return Ok(donors.Select(d => Map(d, User.Identity?.IsAuthenticated == true)));
     }
 
+    [AllowAnonymous]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<DonorDto>> GetById(int id)
     {
@@ -53,9 +54,10 @@ public class DonorsController : ControllerBase
             return NotFound();
         }
 
-        return Ok(Map(donor));
+        return Ok(Map(donor, User.Identity?.IsAuthenticated == true));
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<DonorDto>> Create(DonorWriteDto input)
     {
@@ -84,9 +86,64 @@ public class DonorsController : ControllerBase
             "DonorRegister",
             $"Donor {donor.FullName} ({donor.Phone}, {donor.City}) was registered.");
 
-        return CreatedAtAction(nameof(GetById), new { id = donor.Id }, Map(donor));
+        return CreatedAtAction(nameof(GetById), new { id = donor.Id }, Map(donor, true));
     }
 
+
+    [Authorize]
+    [HttpPost("register-with-donation")]
+    public async Task<ActionResult<DonorDto>> RegisterWithDonation(DonorRegistrationDto input)
+    {
+        if (await _db.Donors.AnyAsync(d => d.Email == input.Email))
+        {
+            return Conflict(new { message = "A donor with this email is already registered." });
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        var donor = new Donor
+        {
+            FullName = input.FullName.Trim(),
+            Email = input.Email.Trim(),
+            Phone = input.Phone.Trim(),
+            Address = input.Address.Trim(),
+            City = input.City.Trim(),
+            State = input.State.Trim(),
+            Pincode = input.Pincode.Trim(),
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.Donors.Add(donor);
+        await _db.SaveChangesAsync();
+
+        var year = DateTime.UtcNow.Year;
+        var lastReceipt = await _db.Donations
+            .Where(d => d.ReceiptNumber.StartsWith($"GC-{year}-"))
+            .OrderByDescending(d => d.ReceiptNumber)
+            .Select(d => d.ReceiptNumber)
+            .FirstOrDefaultAsync();
+        var next = 1;
+        if (lastReceipt is not null && int.TryParse(lastReceipt.Split('-').Last(), out var parsed)) next = parsed + 1;
+
+        donor.Donations.Add(new Donation
+        {
+            DonorId = donor.Id,
+            Amount = decimal.Round(input.Amount, 2),
+            DonationDate = input.DonationDate.Date,
+            PaymentMethod = input.PaymentMethod.Trim(),
+            Purpose = input.Purpose.Trim(),
+            Notes = input.Notes.Trim(),
+            ReceiptNumber = $"GC-{year}-{next:D4}",
+            CreatedAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        await MainAdminNotifier.NotifyAsync(_db, User, "DonorRegister",
+            $"Donor {donor.FullName} was registered with an opening donation of {input.Amount:0}.");
+
+        return CreatedAtAction(nameof(GetById), new { id = donor.Id }, Map(donor, true));
+    }
+
+    [Authorize]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<DonorDto>> Update(int id, DonorWriteDto input)
     {
@@ -110,9 +167,10 @@ public class DonorsController : ControllerBase
         donor.Pincode = input.Pincode.Trim();
 
         await _db.SaveChangesAsync();
-        return Ok(Map(donor));
+        return Ok(Map(donor, true));
     }
 
+    [Authorize]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -132,18 +190,19 @@ public class DonorsController : ControllerBase
         return NoContent();
     }
 
-    private static DonorDto Map(Donor d) => new()
+    private static DonorDto Map(Donor d, bool includePrivate) => new()
     {
         Id = d.Id,
         FullName = d.FullName,
-        Email = d.Email,
-        Phone = d.Phone,
-        Address = d.Address,
+        Email = includePrivate ? d.Email : "",
+        Phone = includePrivate ? d.Phone : "",
+        Address = includePrivate ? d.Address : "",
         City = d.City,
         State = d.State,
-        Pincode = d.Pincode,
+        Pincode = includePrivate ? d.Pincode : "",
         CreatedAt = d.CreatedAt,
         DonationCount = d.Donations.Count,
-        TotalDonated = d.Donations.Sum(x => x.Amount)
+        TotalDonated = d.Donations.Sum(x => x.Amount),
+        LastDonationDate = d.Donations.Count == 0 ? null : d.Donations.Max(x => x.DonationDate)
     };
 }

@@ -16,3 +16,10 @@ frontend/dist/
 ## Face login captures
 backend/GaneshChanda.Api/wwwroot/login-faces/*
 !backend/GaneshChanda.Api/wwwroot/login-faces/.gitkeep
+
+## Visual Studio local/cache files
+.vs/
+**/.vs/
+*.wsuo
+*.suo
+backend/GaneshChanda.Api/appsettings.Development.json

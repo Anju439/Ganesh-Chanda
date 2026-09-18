@@ -7,14 +7,13 @@ const links = [
   { to: '/', label: 'Dashboard' },
   { to: '/donors', label: 'Donors' },
   { to: '/donations', label: 'Donations' },
-  { to: '/sign-ins', label: 'Sign-in log' },
 ]
 
 export default function Layout() {
   const [open, setOpen] = useState(false)
   const { staff, logout } = useAuth()
   const navLinks = staff?.isMainAdmin
-    ? [...links, { to: '/inbox', label: 'Admin inbox' }]
+    ? [...links, { to: '/sign-ins', label: 'Sign-in log' }, { to: '/inbox', label: 'Admin inbox' }]
     : links
 
   return (
@@ -52,19 +51,19 @@ export default function Layout() {
                 {link.label}
               </NavLink>
             ))}
-            <NavLink
-              to="/donors/new"
-              className="ml-2 rounded-full bg-[#e07a2f] px-4 py-2 text-sm font-semibold text-white no-underline hover:bg-[#c9651d]"
-            >
-              Register donor
-            </NavLink>
-            <button
-              type="button"
-              onClick={logout}
-              className="rounded-full px-4 py-2 text-sm font-semibold text-[#6b1d12]"
-            >
-              Sign out
-            </button>
+            {staff ? (
+              <>
+                <NavLink
+                  to="/donors/new"
+                  className="ml-2 rounded-full bg-[#e07a2f] px-4 py-2 text-sm font-semibold text-white no-underline hover:bg-[#c9651d]"
+                >
+                  Add donor & donation
+                </NavLink>
+                <button type="button" onClick={logout} className="rounded-full px-4 py-2 text-sm font-semibold text-[#6b1d12]">Sign out</button>
+              </>
+            ) : (
+              <NavLink to="/login" className="ml-2 rounded-full bg-[#6b1d12] px-4 py-2 text-sm font-semibold text-[#fff8ea] no-underline">Staff login</NavLink>
+            )}
           </nav>
 
           <button
@@ -89,23 +88,14 @@ export default function Layout() {
                 {link.label}
               </NavLink>
             ))}
-            <NavLink
-              to="/donors/new"
-              onClick={() => setOpen(false)}
-              className="rounded-lg bg-[#e07a2f] px-3 py-2 text-center font-semibold text-white no-underline"
-            >
-              Register donor
-            </NavLink>
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                logout()
-              }}
-              className="rounded-lg px-3 py-2 text-left text-[#6b1d12]"
-            >
-              Sign out
-            </button>
+            {staff ? (
+              <>
+                <NavLink to="/donors/new" onClick={() => setOpen(false)} className="rounded-lg bg-[#e07a2f] px-3 py-2 text-center font-semibold text-white no-underline">Add donor & donation</NavLink>
+                <button type="button" onClick={() => { setOpen(false); logout() }} className="rounded-lg px-3 py-2 text-left text-[#6b1d12]">Sign out</button>
+              </>
+            ) : (
+              <NavLink to="/login" onClick={() => setOpen(false)} className="rounded-lg bg-[#6b1d12] px-3 py-2 text-center font-semibold text-[#fff8ea] no-underline">Staff login</NavLink>
+            )}
           </div>
         )}
       </header>

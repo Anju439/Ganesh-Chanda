@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GaneshChanda.Api.Controllers;
 
-[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class DonationsController : ControllerBase
@@ -19,6 +18,7 @@ public class DonationsController : ControllerBase
         _db = db;
     }
 
+    [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<IEnumerable<DonationDto>>> GetAll([FromQuery] int? donorId, [FromQuery] string? purpose)
     {
@@ -42,6 +42,7 @@ public class DonationsController : ControllerBase
         return Ok(items.Select(Map));
     }
 
+    [AllowAnonymous]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<DonationDto>> GetById(int id)
     {
@@ -57,6 +58,7 @@ public class DonationsController : ControllerBase
         return Ok(Map(donation));
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<DonationDto>> Create(DonationWriteDto input)
     {
@@ -103,6 +105,7 @@ public class DonationsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = donation.Id }, Map(donation));
     }
 
+    [Authorize]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {

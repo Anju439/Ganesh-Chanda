@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '../auth'
 import { api } from '../api'
 import { formatDate } from '../format'
 import type { LoginAudit } from '../types'
 
 export default function LoginLogPage() {
+  const { staff } = useAuth()
   const [rows, setRows] = useState<LoginAudit[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -16,13 +19,14 @@ export default function LoginLogPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  if (staff && !staff.isMainAdmin) return <Navigate to="/" replace />
+
   return (
     <div className="space-y-5">
       <div>
         <h1 className="font-display text-3xl text-[#6b1d12]">Who signed in</h1>
         <p className="text-[#7a5a4a]">
-          Each successful login stores the staff account and a face photo of the person at the
-          keyboard.
+          Only Main Admin can view this log. Staff sign-ins include the captured face photo; Main Admin sign-ins do not require a photo.
         </p>
       </div>
       {error && (
@@ -41,11 +45,17 @@ export default function LoginLogPage() {
               key={row.id}
               className="overflow-hidden rounded-2xl border border-[#edd8b8] bg-[#fffdf8] shadow-sm"
             >
-              <img
-                src={row.faceImageUrl}
-                alt={`Face captured for ${row.fullName}`}
-                className="h-44 w-full object-cover bg-[#f6e6c8]"
-              />
+              {row.faceImageUrl ? (
+                <img
+                  src={row.faceImageUrl}
+                  alt={`Face captured for ${row.fullName}`}
+                  className="h-44 w-full object-cover bg-[#f6e6c8]"
+                />
+              ) : (
+                <div className="flex h-44 items-center justify-center bg-[#f6e6c8] px-4 text-center text-sm text-[#7a5a4a]">
+                  Main Admin — face capture not required
+                </div>
+              )}
               <div className="p-4">
                 <p className="font-semibold">{row.fullName}</p>
                 <p className="text-sm text-[#7a5a4a]">@{row.username}</p>

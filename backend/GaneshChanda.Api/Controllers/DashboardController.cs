@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GaneshChanda.Api.Controllers;
 
-[Authorize]
+[AllowAnonymous]
 [ApiController]
 [Route("api/[controller]")]
 public class DashboardController : ControllerBase

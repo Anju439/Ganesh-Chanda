@@ -106,3 +106,11 @@ backend/GaneshChanda.Api   ASP.NET Core Web API + EF Core SQL Server
 frontend                 React UI (dashboard, donors, donations)
 docker-compose.yml       SQL Server 2022
 ```
+
+
+## Public read-only + staff access update
+- Dashboard, donor ledger and donation ledger are accessible without login.
+- Public donor view hides private contact fields (email, phone, address and pincode); name, city/state and donation totals remain visible.
+- Add donor/donation, edit and delete operations require an authenticated staff JWT on the API as well as the UI.
+- Main-admin-only sign-in logs and inbox remain protected.
+- Staff accounts other than the main admin continue through the camera face-capture login flow.

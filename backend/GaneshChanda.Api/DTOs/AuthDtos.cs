@@ -23,6 +23,7 @@ public class FaceLoginRequest
 public class PendingLoginResponse
 {
     public string PendingToken { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
     public bool RequiresFace { get; set; } = true;
     public bool NotifyMainAdmin { get; set; }
     public StaffDto Staff { get; set; } = new();

@@ -2,10 +2,12 @@ import { Search } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
-import { formatRupees } from '../format'
+import { formatDate, formatRupees } from '../format'
 import type { Donor } from '../types'
+import { useAuth } from '../auth'
 
 export default function DonorsPage() {
+  const { staff } = useAuth()
   const [donors, setDonors] = useState<Donor[]>([])
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -54,14 +56,13 @@ export default function DonorsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-display text-3xl text-[#6b1d12]">Donor register</h1>
-          <p className="text-[#7a5a4a]">People who have pledged or given chanda to the mandal.</p>
+          <p className="text-[#7a5a4a]">Excel-style donor ledger with collection totals and quick actions.</p>
         </div>
-        <Link
-          to="/donors/new"
-          className="rounded-full bg-[#6b1d12] px-4 py-2 text-center text-sm font-semibold text-[#fff8ea] no-underline"
-        >
-          New registration
-        </Link>
+        {staff ? (
+          <Link to="/donors/new" className="rounded-full bg-[#6b1d12] px-4 py-2 text-center text-sm font-semibold text-[#fff8ea] no-underline">Add donor & donation</Link>
+        ) : (
+          <span className="rounded-full bg-[#f6e6c8] px-4 py-2 text-sm font-semibold text-[#6b1d12]">Public read-only view</span>
+        )}
       </div>
 
       <form onSubmit={onSearch} className="flex gap-2">
@@ -70,7 +71,7 @@ export default function DonorsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, email, phone, or city"
+            placeholder={staff ? "Search by name, email, phone, or city" : "Search by donor name or city"}
             className="w-full rounded-xl border border-[#edd8b8] bg-[#fffdf8] py-2.5 pr-3 pl-10 outline-none focus:border-[#e07a2f]"
           />
         </div>
@@ -94,79 +95,53 @@ export default function DonorsPage() {
           <p className="mt-1 text-[#7a5a4a]">Register the first donor to start the collection.</p>
         </div>
       ) : (
-        <>
-          <div className="hidden overflow-hidden rounded-2xl border border-[#edd8b8] bg-[#fffdf8] md:block">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-[#f6e6c8] text-[#6b1d12]">
-                <tr>
-                  <th className="px-4 py-3 font-semibold">Donor</th>
-                  <th className="px-4 py-3 font-semibold">Contact</th>
-                  <th className="px-4 py-3 font-semibold">City</th>
-                  <th className="px-4 py-3 font-semibold">Gifts</th>
-                  <th className="px-4 py-3 font-semibold">Total</th>
-                  <th className="px-4 py-3" />
+        <div className="overflow-x-auto rounded-2xl border border-[#edd8b8] bg-[#fffdf8] shadow-sm">
+          <table className="w-full min-w-[850px] text-left text-sm">
+            <thead className="bg-[#6b1d12] text-[#fff8ea]">
+              <tr>
+                <th className="px-4 py-3.5 font-semibold">Donor</th>
+                <th className="px-4 py-3.5 font-semibold">Email</th>
+                <th className="px-4 py-3.5 font-semibold">Phone</th>
+                <th className="px-4 py-3.5 font-semibold">City / State</th>
+                <th className="px-4 py-3.5 font-semibold">Last donation</th>
+                <th className="px-4 py-3.5 text-center font-semibold">Donations</th>
+                <th className="px-4 py-3.5 text-right font-semibold">Total donated</th>
+                <th className="px-4 py-3.5 text-right font-semibold">{staff ? 'Actions' : 'Access'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {donors.map((donor, index) => (
+                <tr
+                  key={donor.id}
+                  className={`border-t border-[#f0e2cb] transition hover:bg-[#fff6e7] ${index % 2 ? 'bg-[#fffaf1]' : 'bg-white'}`}
+                >
+                  <td className="px-4 py-3.5 font-semibold text-[#5e281d]">{donor.fullName}</td>
+                  <td className="px-4 py-3.5 text-[#6f594d]">{donor.email || '—'}</td>
+                  <td className="px-4 py-3.5 text-[#6f594d]">{donor.phone || '—'}</td>
+                  <td className="px-4 py-3.5 text-[#6f594d]">
+                    {[donor.city, donor.state].filter(Boolean).join(', ') || '—'}
+                  </td>
+                  <td className="px-4 py-3.5 text-[#6f594d]">{donor.lastDonationDate ? formatDate(donor.lastDonationDate) : '—'}</td>
+                  <td className="px-4 py-3.5 text-center">{donor.donationCount}</td>
+                  <td className="px-4 py-3.5 text-right font-semibold text-[#6b1d12]">
+                    {formatRupees(donor.totalDonated)}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                    {staff ? (
+                      <>
+                        <Link to={`/donations/new?donorId=${donor.id}`} className="mr-2 rounded-lg bg-[#fff0dc] px-2.5 py-1.5 font-semibold text-[#9a4b16] no-underline hover:bg-[#ffe3bd]">+ Donation</Link>
+                        <Link to={`/donors/${donor.id}/edit`} className="mr-3 rounded-lg px-2.5 py-1.5 font-semibold text-[#d96d26] no-underline hover:bg-[#fff0dc]">Edit</Link>
+                        <button type="button" disabled={busyId === donor.id} onClick={() => remove(donor.id)} className="rounded-lg px-2.5 py-1.5 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">{busyId === donor.id ? 'Removing…' : 'Remove'}</button>
+                      </>
+                    ) : (
+                      <span className="text-xs font-semibold text-[#7a5a4a]">Read only</span>
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {donors.map((donor) => (
-                  <tr key={donor.id} className="border-t border-[#f0e2cb]">
-                    <td className="px-4 py-3 font-semibold">{donor.fullName}</td>
-                    <td className="px-4 py-3">
-                      <div>{donor.email}</div>
-                      <div className="text-[#7a5a4a]">{donor.phone}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {donor.city}
-                      {donor.state ? `, ${donor.state}` : ''}
-                    </td>
-                    <td className="px-4 py-3">{donor.donationCount}</td>
-                    <td className="px-4 py-3 font-semibold">{formatRupees(donor.totalDonated)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        to={`/donors/${donor.id}/edit`}
-                        className="mr-3 text-[#e07a2f] no-underline"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        type="button"
-                        disabled={busyId === donor.id}
-                        onClick={() => remove(donor.id)}
-                        className="text-red-700 disabled:opacity-50"
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="grid gap-3 md:hidden">
-            {donors.map((donor) => (
-              <article
-                key={donor.id}
-                className="rounded-2xl border border-[#edd8b8] bg-[#fffdf8] p-4"
-              >
-                <p className="font-semibold">{donor.fullName}</p>
-                <p className="text-sm text-[#7a5a4a]">{donor.email}</p>
-                <p className="text-sm text-[#7a5a4a]">{donor.phone}</p>
-                <p className="mt-2 text-sm">
-                  {donor.donationCount} gifts · {formatRupees(donor.totalDonated)}
-                </p>
-                <div className="mt-3 flex gap-3">
-                  <Link to={`/donors/${donor.id}/edit`} className="text-[#e07a2f] no-underline">
-                    Edit
-                  </Link>
-                  <button type="button" onClick={() => remove(donor.id)} className="text-red-700">
-                    Remove
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

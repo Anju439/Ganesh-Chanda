@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { formatDate, formatRupees } from '../format'
 import type { Donation } from '../types'
+import { useAuth } from '../auth'
 
 export default function DonationsPage() {
+  const { staff } = useAuth()
   const [rows, setRows] = useState<Donation[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -37,12 +39,11 @@ export default function DonationsPage() {
           <h1 className="font-display text-3xl text-[#6b1d12]">Donations</h1>
           <p className="text-[#7a5a4a]">Every chanda entry with a generated receipt number.</p>
         </div>
-        <Link
-          to="/donations/new"
-          className="rounded-full bg-[#6b1d12] px-4 py-2 text-center text-sm font-semibold text-[#fff8ea] no-underline"
-        >
-          Record donation
-        </Link>
+        {staff ? (
+          <Link to="/donations/new" className="rounded-full bg-[#6b1d12] px-4 py-2 text-center text-sm font-semibold text-[#fff8ea] no-underline">Record donation</Link>
+        ) : (
+          <span className="rounded-full bg-[#f6e6c8] px-4 py-2 text-sm font-semibold text-[#6b1d12]">Public read-only view</span>
+        )}
       </div>
 
       {error && (
@@ -81,9 +82,7 @@ export default function DonationsPage() {
                     <td className="px-4 py-3">{row.paymentMethod}</td>
                     <td className="px-4 py-3">{row.purpose}</td>
                     <td className="px-4 py-3 text-right">
-                      <button type="button" onClick={() => remove(row.id)} className="text-red-700">
-                        Delete
-                      </button>
+                      {staff ? <button type="button" onClick={() => remove(row.id)} className="text-red-700">Delete</button> : <span className="text-xs text-[#7a5a4a]">Read only</span>}
                     </td>
                   </tr>
                 ))}
@@ -101,13 +100,7 @@ export default function DonationsPage() {
                   {formatDate(row.donationDate)} · {row.paymentMethod} · {row.purpose}
                 </p>
                 {row.notes ? <p className="mt-1 text-sm">{row.notes}</p> : null}
-                <button
-                  type="button"
-                  onClick={() => remove(row.id)}
-                  className="mt-2 text-sm text-red-700"
-                >
-                  Delete
-                </button>
+                {staff ? <button type="button" onClick={() => remove(row.id)} className="mt-2 text-sm text-red-700">Delete</button> : null}
               </article>
             ))}
           </div>
