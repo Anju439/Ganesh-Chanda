@@ -15,6 +15,9 @@ import type {
 const TOKEN_KEY = 'ganesh-chanda-token'
 export const PENDING_KEY = 'ganesh-chanda-pending'
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'https://ganesh-chanda-may4.onrender.com'
+
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
 }
@@ -37,7 +40,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const response = await fetch(path, { ...init, headers })
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
 
   if (response.status === 401 && !path.includes('/api/auth/login')) {
     setToken(null)
