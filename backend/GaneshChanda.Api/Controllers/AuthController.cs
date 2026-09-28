@@ -110,8 +110,7 @@ public class AuthController : ControllerBase
         string facePath;
         try
         {
-            var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
-            facePath = FaceImageStorage.Save(webRoot, request.FaceImage);
+            facePath = await FaceImageStorage.SaveAsync(request.FaceImage);
         }
         catch (InvalidOperationException ex)
         {
